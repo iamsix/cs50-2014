@@ -1,0 +1,47 @@
+#include <stdio.h>
+
+int main(void)
+{   
+    int values[10] = {7, 2, 5, 8, 4, 1, 6, 9, 0, 3};
+    int n = 10;
+    
+    int arrayY[n][n];
+    for (int i; i < n; i++)
+    {
+        arrayY[i][0] = values[i];
+    }
+    
+    int nPerArray = 1;
+    do
+    {
+        int arrayX[n][nPerArray];
+        int xPos = 0;
+        for(int i = 0; i < (n); i++)
+        {
+        
+            int tempArray[nPerArray];
+            int tAPos = 0;
+            for(int j = 0; j < nPerArray; j++)
+            {
+                int val1 = arrayY[i][j];
+                int val2 = arrayY[i + 1][j];
+                int greater, lesser;
+                greater = (val1 > val2) ? val1 : val2;
+                lesser = (val1 > val2) ? val2 : val1;
+             
+                tempArray[tAPos] = lesser;
+                tAPos++;
+                tempArray[tAPos] = greater;
+                tAPos++;
+            }
+            arrayX[xPos] = tempArray;
+            xPos++;
+            //I think I need to step by 2 here
+            i++;
+        }
+        arrayY = arrayX;
+        nPerArray = nPerArray * 2;
+        n = n / 2;
+    
+    } while (n > 0);
+}

@@ -1,0 +1,867 @@
+/**
+ * fifteen.c
+ *
+ * Computer Science 50
+ * Problem Set 3
+ *
+ * Implements the Game of Fifteen (generalized to d x d).
+ *
+ * Usage: ./fifteen d
+ *
+ * whereby the board's dimensions are to be d x d,
+ * where d must be in [MIN,MAX]
+ *
+ * Note that usleep is obsolete, but it offers more granularity than
+ * sleep and is simpler to use than nanosleep; `man usleep` for more.
+ */
+ 
+#define _XOPEN_SOURCE 500
+
+#include <cs50.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <time.h>
+#include <string.h>
+#include <ctype.h>
+
+// board's minimal dimension
+#define MIN 3
+
+// board's maximal dimension
+#define MAX 9
+
+// board, whereby board[i][j] represents row i and column j
+int board[MAX][MAX];
+
+// board's dimension
+int d;
+
+// the coordinates of the empty square for optimization
+int cursorpos[2];
+
+// prototypes
+void clear(void);
+void greet(void);
+void init(void);
+void god(void);
+void draw(void);
+bool move(int tile);
+bool won(void);
+void save(void);
+
+int main(int argc, string argv[])
+{
+    // greet player
+    greet();
+
+    // ensure proper usage
+    if (argc != 2)
+    {
+        printf("Usage: ./fifteen d\n");
+        return 1;
+    }
+
+    // ensure valid dimensions
+    d = atoi(argv[1]);
+    if (d < MIN || d > MAX)
+    {
+        printf("Board must be between %i x %i and %i x %i, inclusive.\n",
+            MIN, MIN, MAX, MAX);
+        return 2;
+    }
+
+    // initialize the board
+    init();
+
+    // accept moves until game is won
+    while (true)
+    {
+
+
+        // draw the current state of the board
+        draw();
+
+        // saves the current state of the board (for testing)
+        save();
+
+        // check for win
+        if (won())
+        {
+            printf("ftw!\n");
+            break;
+        }
+
+        // prompt for move
+        printf("Tile to move: ");
+        char* uinput = GetString();
+        int tile = 0;
+        if (strcmp("GOD", uinput) == 0)
+        {
+            god();
+            continue;
+        }
+        else if (strcmp("quit", uinput) == 0)
+        {   
+            printf("Goodbye.\n");
+            break;
+        }
+        else
+        {
+            if (strlen(uinput) < 3 && isdigit(uinput[0]))
+            {
+                tile = atoi(uinput);
+            }
+            else
+            {
+                printf("\nIllegal move.\n");
+                usleep(500000);
+                continue;
+            }
+        }
+        
+
+        // move if possible, else report illegality
+        if (!move(tile))
+        {
+            printf("\nIllegal move.\n");
+            usleep(500000);
+        }
+
+        // sleep for animation's sake
+        usleep(50000);
+    }
+
+    // that's all folks
+    return 0;
+}
+
+/**
+ * Clears screen using ANSI escape sequences.
+ */
+void clear(void)
+{
+    printf("\033[2J");
+    printf("\033[%d;%dH", 0, 0);
+}
+
+/**
+ * Greets player.
+ */
+void greet(void)
+{
+    clear();
+    printf("GAME OF FIFTEEN\n");
+    usleep(2000000);
+}
+
+
+void moveUp(void){move(board[cursorpos[0] - 1][cursorpos[1]]);}
+    
+void moveDown(void){move(board[cursorpos[0] + 1][cursorpos[1]]);}
+    
+void moveLeft(void) {move(board[cursorpos[0]][cursorpos[1] - 1]);}
+    
+void moveRight(void){move(board[cursorpos[0]][cursorpos[1] + 1]);}
+
+
+/*void moveLeftOrRight(int goalpos[])*/
+/*{*/
+/*    if(cursorpos[1] > goalpos[1])*/
+/*    {*/
+/*        moveLeft();*/
+/*    }*/
+/*    else*/
+/*    {*/
+/*        moveRight();*/
+/*    }*/
+/*    draw();*/
+/*    usleep(50000);*/
+/*}*/
+
+/*void moveUpOrDown(int goalpos[])*/
+/*{*/
+/*    if(cursorpos[0] > goalpos[0])*/
+/*    {*/
+/*        moveUp();*/
+/*    }*/
+/*    else*/
+/*    {*/
+/*        moveDown();*/
+/*    }*/
+/*    draw();*/
+/*    usleep(50000);*/
+/*}*/
+
+/*void movetarget(int targetpos[])*/
+/*{*/
+/*    // record target's new position*/
+/*    int newx = cursorpos[0];*/
+/*    int newy = cursorpos[1];*/
+/*    // then actually move it to that new position*/
+/*    move(board[targetpos[0]][targetpos[1]]);*/
+/*    targetpos[0] = newx;*/
+/*    targetpos[1] = newy;*/
+/*    */
+/*    draw();*/
+/*    usleep(50000);*/
+/*}*/
+
+/*********
+// currently doesn't solve the last 2 items in the row.
+void movetargetoposition(int target, int targetpos[], int goalpos[], int currentsolve)
+{
+    while (goalpos[0] != targetpos[0] || goalpos[1] != targetpos[1])
+    {
+        // move the blank to top-left or top-right of the target, and move the target in to it.
+        
+        // first we move to get above it if possible.
+        if (targetpos[0] != cursorpos[0] + 1)
+        {
+            // (targetpos[0] > 0 && cursorpos[0] > 0) && 
+            // move up else down
+            // CORRECT THIS ZERO at > 0
+            if (targetpos[0] <= cursorpos[0] && cursorpos[0] > 0)
+            {
+                
+                if ((board[cursorpos[0] - 1][cursorpos[1]]) == target)
+                {
+                    // we don't want to move the target yet, so try to move over 1
+                    moveLeftOrRight(goalpos);
+                }
+                // in theory we only need to make sure we don't move UP in to a solved one
+                // we should never move down in to one.
+                if ((board[cursorpos[0] - 1][cursorpos[1]]) < currentsolve)
+                {
+                    if(cursorpos[1] + 1 == targetpos[1])
+                    {
+                        moveDown();
+                    }
+                }
+                else
+                {
+                    moveUp();
+                }
+            }
+            else if (targetpos[0] > cursorpos[0] && cursorpos[1] < d)
+            {
+                if ((board[cursorpos[0] + 1][cursorpos[1]]) == target)
+                {
+                    moveLeftOrRight(goalpos);
+                }
+                moveDown();
+            }
+
+            draw();
+            usleep(50000);
+
+        }
+
+        int leftright = (targetpos[1] > goalpos[1]) ? 1 : -1;
+        if(targetpos[1] != cursorpos[1] + leftright)
+        {
+            printf("%i", leftright);
+            // move left else right
+            // CORRECT THIS ZERO at > 0
+            if ((targetpos[1] < cursorpos[1] && cursorpos[1] > 0))
+            {
+                if ((board[cursorpos[0]][cursorpos[1] - 1]) == target)
+                {   
+                    printf("upordown");
+                    moveUpOrDown(goalpos);
+                }
+                // in theory we only need to make sure we don't move Left in to a solved one
+                // we should never move right in to one.
+                if ((board[cursorpos[0]][cursorpos[1] - 1]) < currentsolve)
+                {
+                    printf("WHAAT>>>>>>>");
+//                    movetarget(targetpos); 
+//                    moveDown();
+//                    continue;
+                }
+                else
+                {
+                    moveLeft();
+                }
+            }
+            if (targetpos[1] > cursorpos[1] && cursorpos[1] < d)
+            {
+                if ((board[cursorpos[0]][cursorpos[1] + 1]) == target)
+                {
+                    moveUpOrDown(goalpos);
+                }
+               moveRight();
+            }
+            else if(targetpos[1] == cursorpos[1] && targetpos[0] == cursorpos[0] + 1)
+            {
+                movetarget(targetpos);
+            }
+            else
+            {
+                printf("nothiiiing");
+            }
+            draw();
+            usleep(50000);
+        }
+        
+        // THE ZEROES IN THIS cursorpos[x] == 0 ARE NOT CORRECT. THEY SHOULD BE ROW NUMBER
+        // should possibly use per-column height to fix
+        if(
+           ((cursorpos[0] == targetpos[0] - 1 || cursorpos[0] == 0) && 
+           (cursorpos[1] == targetpos[1] - 1 || cursorpos[1] == 0) &&
+           leftright == 1)
+          )
+        {
+            // this means we are currently at the top-left or left or top of the target.
+            // first, if we are on the top-left, try to move right to be on top
+            if (cursorpos[0] < d &&
+                (cursorpos[0] + 1 == targetpos[0] && cursorpos[1] + 1 == targetpos[1]))
+            {
+                moveRight();
+                draw();
+                usleep(50000);
+            }
+
+            movetarget(targetpos);   
+        }
+        // THE ZEROES IN THIS cursorpos[x] == 0 ARE NOT CORRECT. THEY SHOULD BE ROW NUMBER
+        if((
+           (cursorpos[0] == targetpos[0] - 1 || cursorpos[0] == 0) && 
+           (cursorpos[1] == targetpos[1] + 1 || cursorpos[1] == 0) &&
+           leftright == -1) ||
+           (targetpos[1] == cursorpos[1] - 1 && targetpos[0] == cursorpos[0] && targetpos[1] < goalpos[1])
+          )
+        {
+            // this means we are currently at the top-right, right, or top of the target.   
+            // first, if we are on the top-right, try to move left to be on top
+            if (cursorpos[0] < d &&
+                (cursorpos[0] + 1 == targetpos[0] && cursorpos[1] - 1 == targetpos[1]))
+            {
+                moveLeft();
+                draw();
+                usleep(50000);
+            }
+
+            movetarget(targetpos);   
+        }
+              
+    }
+
+        
+
+}
+**/
+
+
+void movecursor(int goalX, int goalY, int solvedmap[][d])
+{
+    while(cursorpos[0] != goalX || cursorpos[1] != goalY)
+    {
+        draw();
+        usleep(50000);
+        if(cursorpos[1] < goalY)        
+        {
+            if(solvedmap[cursorpos[0]][cursorpos[1] + 1] != 1)
+            {
+                moveRight();
+                continue;
+            }
+            else if(cursorpos[0] < goalX && solvedmap[cursorpos[0] + 1][cursorpos[1]] != 1)
+            {
+                moveDown();
+                continue;
+            }
+            else if(cursorpos[0] > goalX && solvedmap[cursorpos[0] - 1][cursorpos[1]] != 1)
+            {
+                moveUp();
+                continue;
+            }
+            else
+            {
+                printf("This shouldn't happen!");
+                usleep(500000);
+                break;
+            }
+        }
+        
+        if(cursorpos[1] > goalY)
+        {
+            if (solvedmap[cursorpos[0]][cursorpos[1] - 1] != 1)
+            {
+                moveLeft();
+                continue;
+            }
+            else if(cursorpos[0] < goalX <= d && solvedmap[cursorpos[0] + 1][cursorpos[1]] != 1)
+            {
+                moveDown();
+                continue;
+            }
+            else if(cursorpos[0] > goalX && solvedmap[cursorpos[0] - 1][cursorpos[1]] != 1)
+            {
+                moveUp();
+                continue;
+            }
+            else
+            {
+                printf("This shouldn't happen 2!");
+                usleep(500000);
+                break;
+            }
+        }
+        
+        if( (cursorpos[0] < goalX) && 
+                 (solvedmap[cursorpos[0] + 1][cursorpos[1]] != 1)
+               )
+        {
+            moveDown();
+            continue;
+        }
+        
+        if( (cursorpos[0] > goalX) && 
+                 (solvedmap[cursorpos[0] - 1][cursorpos[1]] != 1)
+               )
+        {
+            moveUp();
+            continue;
+        }
+        
+    }
+    draw();
+    usleep(50000);
+
+}
+
+/**
+ * Plays the game for the user.
+ * Hard to do because I'm not very good at playing the game either
+ */
+void god(void)
+{
+    // We want to get the top row, left column solved repeatedly
+    // the problem is how to actually get those things IN to those spots
+    // especially hard is that the last 2 of any row/column will need to be solved together
+
+    // these will track my progress from (0 none solved) to 1-4 solved.
+    // solvedrow/column track my entire board process
+    // currentsolve tracks my current row OR column progress
+//    int solvedrow = 0;
+//    int solvedcolumn = 0;
+    int solvedmap[d][d];
+    for(int i = 0; i < d; i++)
+    {
+        for(int j = 0; j < d; j++)
+        {
+            solvedmap[i][j] = 0;
+        }
+    }
+    //move the cursor to the bottom-right for 
+    movecursor(d-1, d-1, solvedmap);
+
+    // TODO make target change
+    int target = 1;  
+    int targetpos[2] = {-1, -1};
+    //first we find where our target currently is.
+    for(int i = 0; i < d; i++)
+    {
+        for(int j = 0; j < d; j++)
+        {
+            if(board[i][j] == target)
+            {
+                targetpos[0] = i;
+                targetpos[1] = j;
+                break;
+            }
+        }
+        if(targetpos[0] > -1)
+        {
+            break;
+        }
+    }
+
+    // temporarily mark the target position as 'solved' so it doesn't move through it
+    solvedmap[targetpos[0]][targetpos[1]] = 1;
+    // TODO if target is in position don't bother with the rest.
+
+
+    int cgoalX = targetpos[0];
+    int cgoalY = targetpos[1] + 1;
+    
+    if(targetpos[1] == d - 1)
+    {
+        cgoalY = targetpos[1] - 1;
+        movecursor(cgoalX, cgoalY, solvedmap);
+        moveRight();
+        targetpos[1]--;  
+        draw();
+        usleep(50000); 
+    }
+    else
+    {
+    // actually move the cursor.
+    movecursor(cgoalX, cgoalY, solvedmap);
+    }
+    solvedmap[targetpos[0]][targetpos[1]] = 0;
+    // The cursor is now on the RIGHT of the target piece.
+    
+    // Now drag it to its solved location
+    // TODO make these programatically
+    int goalX = 0;
+    int goalY = 0;
+    
+    //   - move diagonally to either the correct row or column with prescribed movements
+    while (targetpos[0] != goalX && targetpos[1] != goalY)
+    {
+        moveUp();
+        draw();
+        usleep(50000); 
+        moveLeft();
+        draw();
+        usleep(50000); 
+        moveDown();
+        targetpos[0]--;
+        draw();
+        usleep(50000); 
+        moveLeft();
+        draw();
+        usleep(50000); 
+        moveUp();
+        draw();
+        usleep(50000); 
+        moveRight();
+        targetpos[1]--;
+        draw();
+        usleep(50000); 
+    }
+    //   - then move horizontal/vertical until it's in position
+    while (targetpos[0] != goalX || targetpos[1] != goalY)
+    {
+        if(targetpos[0] > goalX)
+        {
+            moveUp();
+            draw();
+            usleep(50000); 
+            moveLeft();
+            draw();
+            usleep(50000); 
+            moveDown();
+            targetpos[0]--;
+            draw();
+            usleep(50000); 
+            moveRight();
+            draw();
+            usleep(50000); 
+            moveUp();
+            draw();
+            usleep(50000); 
+        }
+        else if(targetpos[1] > goalY)
+        {
+            moveDown();
+            draw();
+            usleep(50000); 
+            moveLeft();
+            draw();
+            usleep(50000); 
+            moveLeft();
+            draw();
+            usleep(50000); 
+            moveUp();
+            draw();
+            usleep(50000); 
+            moveRight();
+            targetpos[1]--;
+            draw();
+            usleep(50000); 
+        }
+    }
+    solvedmap[goalX][goalY] = 1;
+}
+
+/*** OLD CODE PRESERVED ********************
+    for(int currentsolve = 1; currentsolve < d+1; currentsolve++)
+    {
+        int target = (solvedrow * d) + currentsolve;
+        if(currentsolve == d - 1)
+        {
+            target = d;                
+        }
+        else if (currentsolve == d)
+        {
+            target = d - 1;
+        }
+        
+        int targetpos[2] = {-1, -1};
+        //first we find where our target currently is.
+        for(int i = 0; i < d; i++)
+        {
+            for(int j = 0; j < d; j++)
+            {
+                if(board[i][j] == target)
+                {
+                    targetpos[0] = i;
+                    targetpos[1] = j;
+                    break;
+                }
+            }
+            if(targetpos[0] > -1)
+            {
+                break;
+            }
+        }
+        // due to the rules of the game the target's value also happens to tell you its goal position :)
+
+        int goalpos[2] = {solvedrow, (target - (d*solvedcolumn)) - 1};
+        if(currentsolve == d - 1)
+        {
+            goalpos[1]--;
+        }
+        else if (currentsolve == d)
+        {
+            goalpos[0]++;
+        }
+        
+        movetargetoposition(target, targetpos, goalpos, currentsolve);
+        
+        if (currentsolve == d)
+        {
+            targetpos[0] = solvedrow + 1;
+            targetpos[1] = currentsolve - 2;
+            goalpos[0] = solvedrow;
+            goalpos[1] = currentsolve - 2;
+            movetargetoposition(currentsolve - 1, targetpos, goalpos, currentsolve - 1);
+        }
+               
+        
+    }
+    solvedrow++;
+}
+******************************************/
+
+
+
+
+/**
+ * Initializes the game's board with tiles numbered 1 through d*d - 1,
+ * (i.e., fills board with values but does not actually print them),
+ * whereby board[i][j] represents row i and column j.
+ */
+void init(void)
+{
+    // init the board normally in a known-solvable state.
+    int val = (d * d) - 1;
+    
+    for(int i = 0; i < d; i++)
+    {
+        for(int j = 0; j < d; j++)
+        {
+            board[i][j] = val--;  
+        }
+    }
+    // empty space is largest number instead of 0
+    board[d-1][d-1] = (d*d);
+    
+    // swap if odd number
+    val = (d * d) - 1;  
+    if ((val % 2) != 0)
+    {
+        int temp = board[d-1][d-3];
+        board[d-1][d-3] = board[d-1][d-2];
+        board[d-1][d-2] = temp;
+    }
+    
+    cursorpos[0] = d - 1;
+    cursorpos[1] = d - 1;
+    
+    // now jumble them all.
+    // let's just feed it d^3 random moves, that should be sufficiently messed up    
+    srand((unsigned int) time(NULL));
+    for(int i = 0; i < (d*d*d); i++)
+    {
+        int direction = rand() % 4;
+        // note: breaks are inside ifs because I want it to cascade to the next possible move
+        switch (direction)
+        {
+            case 0: // left
+                if(cursorpos[1] - 1 >= 0)
+                {
+                  moveLeft();
+                  break;
+                }
+            case 1: // right
+                if(cursorpos[1] + 1 < d)
+                {
+                  moveRight();
+                  break;
+                }
+            case 2: // up
+                if(cursorpos[0] - 1 >= 0)
+                {
+                  moveUp();
+                  break;
+                }
+            case 3: // down
+                if(cursorpos[0] + 1 < d)
+                {
+                  moveDown();
+                  break;
+                }
+        }
+    }
+    
+    
+}
+
+
+void drawdivider(void)
+{
+    printf("|");
+    for(int i = 0; i < d; i++)
+    {
+        printf("----|");
+    }
+    printf("\n");
+}
+
+/**
+ * Prints the board in its current state.
+ */
+void draw(void)
+{
+    // clear the screen
+    clear();
+    
+    drawdivider();
+    for(int i = 0; i < d; i++)
+    {
+        printf("|");
+        for(int j = 0; j < d; j++)
+        {
+            int val = board[i][j];
+            if(val == (d*d))
+            {
+                printf("    |");
+            }
+            else
+            {
+                printf(" %2i |", val);
+            }
+        }
+        printf("\n");
+        drawdivider();
+    }
+    
+}
+
+/**
+ * If tile borders empty space, moves tile and returns true, else
+ * returns false. 
+ */
+bool move(int tile)
+{
+
+    // figure out if the move is valid (next to the blankPt)
+    // by working from the blank position as a starting point
+    int j = cursorpos[0];
+    int k = cursorpos[1];
+    if (((cursorpos[0] + 1) < d) && (board[cursorpos[0] + 1][cursorpos[1] ] == tile))
+    {
+        j++;
+    }
+     
+    if (((cursorpos[0] - 1) >= 0) && (board[cursorpos[0] - 1][cursorpos[1] ] == tile))
+    {
+        j--;
+    }
+    
+    if (((cursorpos[1] + 1) < d) && (board[cursorpos[0] ][cursorpos[1] + 1] == tile))
+    {
+        k++;
+    }
+            
+    if (((cursorpos[1] - 1) >= 0) && (board[cursorpos[0] ][cursorpos[1] - 1] == tile))
+    {
+        k--;
+    }
+    
+    // swap the 2 values
+    if (j != cursorpos[0] || k != cursorpos[1])
+    {
+        board[j][k] = (d*d);
+        board[cursorpos[0]][cursorpos[1]] = tile;
+        cursorpos[0] = j;
+        cursorpos[1] = k;
+        
+        return true;
+    }
+        
+    return false;
+}
+
+/**
+ * Returns true if game is won (i.e., board is in winning configuration), 
+ * else false.
+ */
+bool won(void)
+{
+    int tmp = 0;
+    for(int i = 0; i < d; i++)
+    {
+        for(int j = 0; j < d; j++)
+        {
+            if(board[i][j] < tmp)
+            {
+                return false;
+            }
+            tmp = board[i][j];
+         }
+    }
+    return true;
+}
+
+/**
+ * Saves the current state of the board to disk (for testing).
+ */
+void save(void)
+{
+    // log
+    const string log = "log.txt";
+
+    // delete existing log, if any, before first save
+    static bool saved = false;
+    if (!saved)
+    {
+        unlink(log);
+        saved = true;
+    }
+
+    // open log
+    FILE* p = fopen(log, "a");
+    if (p == NULL)
+    {
+        return;
+    }
+
+    // log board
+    fprintf(p, "{");
+    for (int i = 0; i < d; i++)
+    {
+        fprintf(p, "{");
+        for (int j = 0; j < d; j++)
+        {
+            fprintf(p, "%i", board[i][j]);
+            if (j < d - 1)
+            {
+                fprintf(p, ",");
+            }
+        }
+        fprintf(p, "}");
+        if (i < d - 1)
+        {
+            fprintf(p, ",");
+        }
+    }
+    fprintf(p, "}\n");
+
+    // close log
+    fclose(p);
+}
